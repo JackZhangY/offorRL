@@ -52,7 +52,7 @@ def main(args):
 
     ### device setting
     if args.device.cuda:
-        os.environ["CUDA_VISIBLE_DEVICES"] = str(args.device.gpu_idx)
+        # os.environ["CUDA_VISIBLE_DEVICES"] = str(args.device.gpu_idx)
         ptu.set_gpu_mode(True, args.device.gpu_idx)
     seed = args.device.seed
     random.seed(seed)
