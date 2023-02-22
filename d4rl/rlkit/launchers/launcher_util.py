@@ -18,6 +18,7 @@ from rlkit.torch.pytorch_util import set_gpu_mode
 import rlkit.pythonplusplus as ppp
 
 import torch
+from omegaconf import DictConfig, ListConfig
 
 GitInfo = namedtuple(
     'GitInfo',
@@ -186,7 +187,8 @@ def create_exp_name(exp_prefix, exp_id=0, seed=0):
     """
     now = datetime.datetime.now(dateutil.tz.tzlocal())
     timestamp = now.strftime('%Y_%m_%d_%H_%M_%S')
-    return "%s_%s_%04d--s-%d" % (exp_prefix, timestamp, exp_id, seed)
+    # return "%s_%s_%04d--s-%d" % (exp_prefix, timestamp, exp_id, seed)
+    return "%s_seed=%d_%s" % (exp_prefix, seed, timestamp)
 
 
 def create_log_dir(
@@ -311,7 +313,7 @@ def setup_logger(
     if script_name is not None:
         with open(osp.join(log_dir, "script_name.txt"), "w") as f:
             f.write(script_name)
-    return log_dir
+    return log_dir, variant_log_path
 
 
 def dict_to_safe_json(d):
@@ -343,6 +345,19 @@ def safe_json(data):
         return all(isinstance(k, str) and safe_json(v) for k, v in data.items())
     return False
 
+def omegaconf_to_dict(oc):
+    if isinstance(oc, DictConfig):
+        d = {}
+        for k, v in oc.items():
+            d[k] = omegaconf_to_dict(v)
+        return d
+    if isinstance(oc, ListConfig):
+        d = []
+        for k in oc:
+            d.append(omegaconf_to_dict(k))
+        return d
+    else:
+        return oc
 
 def set_seed(seed):
     """

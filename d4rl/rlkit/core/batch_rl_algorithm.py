@@ -15,6 +15,7 @@ class BatchRLAlgorithm(BaseRLAlgorithm, metaclass=abc.ABCMeta):
             exploration_data_collector: PathCollector,
             evaluation_data_collector: PathCollector,
             replay_buffer: ReplayBuffer,
+            total_training_steps,
             batch_size,
             max_path_length,
             num_epochs,
@@ -24,6 +25,7 @@ class BatchRLAlgorithm(BaseRLAlgorithm, metaclass=abc.ABCMeta):
             num_train_loops_per_epoch=1,
             min_num_steps_before_training=0,
             start_epoch=0, # negative epochs are offline, positive epochs are online
+            online_finetune=False # whether to implement offline2online
     ):
         super().__init__(
             trainer,
@@ -33,6 +35,7 @@ class BatchRLAlgorithm(BaseRLAlgorithm, metaclass=abc.ABCMeta):
             evaluation_data_collector,
             replay_buffer,
         )
+        self.total_training_steps = total_training_steps
         self.batch_size = batch_size
         self.max_path_length = max_path_length
         self.num_epochs = num_epochs
@@ -42,6 +45,13 @@ class BatchRLAlgorithm(BaseRLAlgorithm, metaclass=abc.ABCMeta):
         self.num_expl_steps_per_train_loop = num_expl_steps_per_train_loop
         self.min_num_steps_before_training = min_num_steps_before_training
         self._start_epoch = start_epoch
+        self.online_finetune = online_finetune
+
+        assert int((self.num_epochs - self._start_epoch) * self.num_train_loops_per_epoch * self.num_trains_per_train_loop)\
+               == int(self.total_training_steps), 'mismatch of total training steps indicated in \'trainer\' and \'algorithm\''
+        assert self._start_epoch < 0 and self.num_epochs >= 0, 'not satisfy epoch setting for offline RL'
+        if self.online_finetune:
+            assert self.num_epochs > 0, 'not satisfy epoch setting for offline2online RL'
 
     def train(self):
         """Negative epochs are offline, positive epochs are online"""
@@ -73,16 +83,15 @@ class BatchRLAlgorithm(BaseRLAlgorithm, metaclass=abc.ABCMeta):
         gt.stamp('evaluation sampling')
 
         for _ in range(self.num_train_loops_per_epoch):
-            new_expl_paths = self.expl_data_collector.collect_new_paths(
-                self.max_path_length,
-                self.num_expl_steps_per_train_loop,
-                discard_incomplete_paths=False,
-            )
-            gt.stamp('exploration sampling', unique=False)
-
             if not self.offline_rl:
+                new_expl_paths = self.expl_data_collector.collect_new_paths(
+                    self.max_path_length,
+                    self.num_expl_steps_per_train_loop,
+                    discard_incomplete_paths=False,
+                )
+                gt.stamp('exploration sampling', unique=False)
                 self.replay_buffer.add_paths(new_expl_paths)
-            gt.stamp('data storing', unique=False)
+                gt.stamp('data storing', unique=False)
 
             self.training_mode(True)
             for _ in range(self.num_trains_per_train_loop):

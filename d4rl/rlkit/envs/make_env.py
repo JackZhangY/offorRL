@@ -36,11 +36,12 @@ def make(env_id=None, env_class=None, env_kwargs=None, normalize_env=True):
         env = gym.make(env_id)
     elif env_id in D4RL_ENVS:
         import d4rl
-        assert normalize_env == False
+        assert normalize_env == False, 'default unallowed normalize env for -v0 dataset, if must, modify the D4RL_ENVS list'
         env = gym.make(env_id)
     elif env_id:
+        import d4rl
         env = gym.make(env_id)
-    env = env.env # unwrap TimeLimit
+    # env = env.env # unwrap TimeLimit
 
     if normalize_env:
         env = NormalizedBoxEnv(env)

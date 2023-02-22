@@ -42,6 +42,11 @@ class NormalizedBoxEnv(ProxyEnv):
         self._obs_mean = np.mean(obs_batch, axis=0)
         self._obs_std = np.std(obs_batch, axis=0)
 
+    def set_obs_stats(self, obs_mean, obs_std):
+        print("=========== successfully set the Mean and Std for the Normalized Env ===========")
+        self._obs_mean = obs_mean.flatten()
+        self._obs_std = obs_std.flatten()
+
     def _apply_normalize_obs(self, obs):
         return (obs - self._obs_mean) / (self._obs_std + 1e-8)
 
@@ -56,6 +61,18 @@ class NormalizedBoxEnv(ProxyEnv):
         if self._should_normalize:
             next_obs = self._apply_normalize_obs(next_obs)
         return next_obs, reward * self._reward_scale, done, info
+
+    def reset(self, **kwargs):
+        raw_obs = self._wrapped_env.reset(**kwargs)
+        return self._apply_normalize_obs(raw_obs)
+
+    @property
+    def spec(self):
+        return self._wrapped_env.spec
+
+    def normalize_update(self):
+        # todo: online update the mean and std of observation when online sampling (used in .step())
+        pass
 
     def __str__(self):
         return "Normalized: %s" % self._wrapped_env

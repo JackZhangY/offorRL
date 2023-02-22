@@ -60,7 +60,8 @@ class BaseRLAlgorithm(object, metaclass=abc.ABCMeta):
         gt.stamp('saving')
         self._log_stats(epoch)
 
-        self.expl_data_collector.end_epoch(epoch)
+        if self.expl_data_collector is not None:
+            self.expl_data_collector.end_epoch(epoch)
         self.eval_data_collector.end_epoch(epoch)
         self.replay_buffer.end_epoch(epoch)
         self.trainer.end_epoch(epoch)
@@ -72,8 +73,9 @@ class BaseRLAlgorithm(object, metaclass=abc.ABCMeta):
         snapshot = {}
         for k, v in self.trainer.get_snapshot().items():
             snapshot['trainer/' + k] = v
-        for k, v in self.expl_data_collector.get_snapshot().items():
-            snapshot['exploration/' + k] = v
+        if self.expl_data_collector is not None:
+            for k, v in self.expl_data_collector.get_snapshot().items():
+                snapshot['exploration/' + k] = v
         for k, v in self.eval_data_collector.get_snapshot().items():
             snapshot['evaluation/' + k] = v
         for k, v in self.replay_buffer.get_snapshot().items():
@@ -100,20 +102,21 @@ class BaseRLAlgorithm(object, metaclass=abc.ABCMeta):
         """
         Exploration
         """
-        logger.record_dict(
-            self.expl_data_collector.get_diagnostics(),
-            prefix='expl/'
-        )
-        expl_paths = self.expl_data_collector.get_epoch_paths()
-        if hasattr(self.expl_env, 'get_diagnostics'):
+        if self.expl_data_collector is not None:
             logger.record_dict(
-                self.expl_env.get_diagnostics(expl_paths),
-                prefix='expl/',
+                self.expl_data_collector.get_diagnostics(),
+                prefix='expl/'
             )
-        logger.record_dict(
-            eval_util.get_generic_path_information(expl_paths),
-            prefix="expl/",
-        )
+            expl_paths = self.expl_data_collector.get_epoch_paths()
+            if hasattr(self.expl_env, 'get_diagnostics'):
+                logger.record_dict(
+                    self.expl_env.get_diagnostics(expl_paths),
+                    prefix='expl/',
+                )
+            logger.record_dict(
+                eval_util.get_generic_path_information(expl_paths, env=self.expl_env),
+                prefix="expl/",
+            )
         """
         Evaluation
         """
@@ -128,7 +131,7 @@ class BaseRLAlgorithm(object, metaclass=abc.ABCMeta):
                 prefix='eval/',
             )
         logger.record_dict(
-            eval_util.get_generic_path_information(eval_paths),
+            eval_util.get_generic_path_information(eval_paths, env=self.eval_env),
             prefix="eval/",
         )
 

@@ -56,6 +56,8 @@ class IQLTrainer(TorchTrainer):
             soft_target_tau=1e-2,
             target_update_period=1,
             beta=1.0,
+            total_training_steps=1E6,
+            cosine_lr_decay=False
     ):
         super().__init__()
         self.env = env
@@ -80,6 +82,12 @@ class IQLTrainer(TorchTrainer):
             weight_decay=policy_weight_decay,
             lr=policy_lr,
         )
+        self.total_training_steps = total_training_steps
+        self.cosine_lr_decay = cosine_lr_decay
+        if self.cosine_lr_decay:
+            self.lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(self.policy_optimizer,
+                                                                           int(self.total_training_steps),
+                                                                           eta_min=0)
         self.optimizers[self.policy] = self.policy_optimizer
         self.qf1_optimizer = optimizer_class(
             self.qf1.parameters(),
@@ -171,13 +179,15 @@ class IQLTrainer(TorchTrainer):
         policy_logpp = dist.log_prob(actions)
 
         adv = q_pred - vf_pred
-        exp_adv = torch.exp(adv / self.beta)
+        exp_adv = torch.exp(adv * self.beta)
         if self.clip_score is not None:
             exp_adv = torch.clamp(exp_adv, max=self.clip_score)
 
         weights = exp_adv[:, 0].detach()
         policy_loss = (-policy_logpp * weights).mean()
 
+        if self.cosine_lr_decay:
+            self.lr_scheduler.step()
         """
         Update networks
         """
@@ -244,7 +254,7 @@ class IQLTrainer(TorchTrainer):
                 'terminals',
                 ptu.get_numpy(terminals),
             ))
-            self.eval_statistics['replay_buffer_len'] = self.replay_buffer._size
+            # self.eval_statistics['replay_buffer_len'] = self.replay_buffer._size
             policy_statistics = add_prefix(dist.get_diagnostics(), "policy/")
             self.eval_statistics.update(policy_statistics)
             self.eval_statistics.update(create_stats_ordered_dict(
