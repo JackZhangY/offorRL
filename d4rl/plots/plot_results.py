@@ -81,7 +81,7 @@ if __name__ == '__main__':
             try:
                 total_data, curr_len = load_total_results(file_path.format(env_name, env_type), prefix_name, item_plot)
                 print('current length: {}; total seeds: {}'.format(curr_len, len(total_data)))
-                score_mean, score_std = smooth_plot(total_data, curr_len, item_idx=0, color=COLORS[color_idx], label=env_type+'in')
+                score_mean, score_std = smooth_plot(total_data, curr_len, item_idx=0, color=COLORS[color_idx], label=env_type)
                 color_idx+=1
                 print('performance on {}-{}-v2: {}+-{}'.format(env_name, env_type, score_mean, score_std))
 

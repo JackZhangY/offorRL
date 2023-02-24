@@ -182,11 +182,13 @@ class GaussianPolicy(Mlp, TorchStochasticPolicy):
             if self.std_architecture == "shared":
                 log_std = torch.sigmoid(self.last_fc_log_std(h))
             elif self.std_architecture == "values":
-                log_std = torch.sigmoid(self.log_std_logits)
+                # log_std = torch.sigmoid(self.log_std_logits)
+                log_std = self.log_std_logits
             else:
                 raise ValueError(self.std_architecture)
-            log_std = self.min_log_std + log_std * (
-                        self.max_log_std - self.min_log_std)
+            # log_std = self.min_log_std + log_std * (
+            #             self.max_log_std - self.min_log_std)
+            log_std = log_std.clamp(-5., 2.)
             std = torch.exp(log_std)
         else:
             std = torch.from_numpy(np.array([self.std, ])).float().to(

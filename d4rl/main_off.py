@@ -25,23 +25,10 @@ TrainerPool = {
     'IQL': IQLTrainer,
 }
 
-def data_filename(env_name, suffix='hdf5'):
-    if env_name[-2:] == 'v0':
-        filename = env_name[:-3].replace('-', '_') + '-v0'
-    elif env_name[-2:] == 'v2':
-        filename = env_name[:-3].replace('-', '_') + '-v2'
-    else:
-        raise ValueError('only support -v0 or -v2 dataset')
-    if suffix is not None:
-        filename += '.{}'.format(suffix)
-    return filename
 
 @hydra.main(config_path='configs', config_name='base.yaml')
 def main(args):
 
-    # os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
-    # os.environ['OMP_NUM_THREADS'] = '2'
-    # os.environ['MKL_NUM_THREADS'] = '2'
     torch.set_num_threads(2)
 
     exp_prefix = args.trainer.exp_prefix
@@ -84,11 +71,7 @@ def main(args):
     # replay buffer
     replay_buffer = EnvReplayBuffer(args.buffer.max_replay_buffer_size, eval_env,
                                     online_finetune=args.rlalg.online_finetune)
-    if args.buffer.load_buffer:
-        dataset_path = args.buffer.dataset_path
-        buffer_filename = os.path.join(dataset_path, data_filename(args.env.name))
-        assert os.path.exists(buffer_filename), 'no such dataset is found in \'{}\''.format(buffer_filename)
-        replay_buffer.load_hdf5(buffer_filename)
+    replay_buffer.load_hdf5()
     if args.trainer.obs_norm:
         replay_buffer.normalize_states()
         eval_env.set_obs_stats(replay_buffer.mean, replay_buffer.std)

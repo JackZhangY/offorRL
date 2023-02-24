@@ -15,7 +15,6 @@ env:
 buffer:
   max_replay_buffer_size: 2000000
   load_buffer: True
-  dataset_path: '/home/zy/.d4rl/datasets/v2'
 
 rlalg:
   online_finetune: False
