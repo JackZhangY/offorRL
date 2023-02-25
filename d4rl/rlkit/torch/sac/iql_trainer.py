@@ -86,8 +86,8 @@ class IQLTrainer(TorchTrainer):
         self.cosine_lr_decay = cosine_lr_decay
         if self.cosine_lr_decay:
             self.lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(self.policy_optimizer,
-                                                                           int(self.total_training_steps),
-                                                                           eta_min=0)
+                                                                           int(self.total_training_steps))
+
         self.optimizers[self.policy] = self.policy_optimizer
         self.qf1_optimizer = optimizer_class(
             self.qf1.parameters(),
@@ -186,8 +186,6 @@ class IQLTrainer(TorchTrainer):
         weights = exp_adv[:, 0].detach()
         policy_loss = (-policy_logpp * weights).mean()
 
-        if self.cosine_lr_decay:
-            self.lr_scheduler.step()
         """
         Update networks
         """
@@ -208,6 +206,9 @@ class IQLTrainer(TorchTrainer):
             self.policy_optimizer.zero_grad()
             policy_loss.backward()
             self.policy_optimizer.step()
+
+        if self.cosine_lr_decay:
+            self.lr_scheduler.step()
 
         """
         Soft Updates

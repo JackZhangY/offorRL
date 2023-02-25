@@ -14,7 +14,6 @@ env:
 
 buffer:
   max_replay_buffer_size: 2000000
-  load_buffer: True
 
 rlalg:
   online_finetune: False

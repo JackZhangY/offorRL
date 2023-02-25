@@ -24,7 +24,7 @@ from rlkit.torch.sac.policies.base import (
 )
 
 LOG_SIG_MAX = 2
-LOG_SIG_MIN = -20
+LOG_SIG_MIN = -5
 
 # TODO: deprecate classes below in favor for PolicyFromDistributionModule
 
@@ -150,8 +150,8 @@ class GaussianPolicy(Mlp, TorchStochasticPolicy):
             output_activation=torch.tanh,
             **kwargs
         )
-        self.min_log_std = min_log_std
-        self.max_log_std = max_log_std
+        self.min_log_std = min_log_std or LOG_SIG_MIN
+        self.max_log_std = max_log_std or LOG_SIG_MAX
         self.log_std = None
         self.std = std
         self.std_architecture = std_architecture
@@ -188,7 +188,7 @@ class GaussianPolicy(Mlp, TorchStochasticPolicy):
                 raise ValueError(self.std_architecture)
             # log_std = self.min_log_std + log_std * (
             #             self.max_log_std - self.min_log_std)
-            log_std = log_std.clamp(-5., 2.)
+            log_std = log_std.clamp(self.min_log_std, self.max_log_std)
             std = torch.exp(log_std)
         else:
             std = torch.from_numpy(np.array([self.std, ])).float().to(
