@@ -64,7 +64,7 @@ class BaseRLAlgorithm(object, metaclass=abc.ABCMeta):
             self.expl_data_collector.end_epoch(epoch)
         self.eval_data_collector.end_epoch(epoch)
         self.replay_buffer.end_epoch(epoch)
-        self.trainer.end_epoch(epoch)
+        # self.trainer.end_epoch(epoch)
 
         for post_epoch_func in self.post_epoch_funcs:
             post_epoch_func(self, epoch)
