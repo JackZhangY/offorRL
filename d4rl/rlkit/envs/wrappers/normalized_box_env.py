@@ -17,9 +17,11 @@ class NormalizedBoxEnv(ProxyEnv):
             reward_scale=1.,
             obs_mean=None,
             obs_std=None,
+            obs_nrom=True
     ):
         ProxyEnv.__init__(self, env)
-        self._should_normalize = not (obs_mean is None and obs_std is None)
+        # self._should_normalize = not (obs_mean is None and obs_std is None)
+        self._should_normalize = obs_nrom
         if self._should_normalize:
             if obs_mean is None:
                 obs_mean = np.zeros_like(env.observation_space.low)
@@ -43,7 +45,7 @@ class NormalizedBoxEnv(ProxyEnv):
         self._obs_std = np.std(obs_batch, axis=0)
 
     def set_obs_stats(self, obs_mean, obs_std):
-        print("=========== successfully set the Mean and Std for the Normalized Env ===========")
+        print("=========== successfully reset the Mean and Std for the Normalized Env ===========")
         self._obs_mean = obs_mean.flatten()
         self._obs_std = obs_std.flatten()
 
