@@ -30,6 +30,8 @@ rlalg:
 trainer:
   name: 'CQL'
 
+spec: # specific config for some envs if needed
+  null
 
 hydra:
   output_subdir: null
@@ -37,6 +39,7 @@ hydra:
 defaults:
   - _self_
   - trainer: iql
+  - spec: null
   - override hydra/launcher: joblib
 
 

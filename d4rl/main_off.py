@@ -31,6 +31,9 @@ def main(args):
 
     torch.set_num_threads(2)
 
+    if args.spec is not None:
+        assert args.spec == args.env.name, 'env mismatches with the specific config'
+
     exp_prefix = args.trainer.exp_prefix
     base_log_dir = os.path.join(args.logger.log_dir, args.env.name, args.trainer.name)
     log_dir, variant_log_path = setup_logger(exp_prefix=exp_prefix, variant=omegaconf_to_dict(args),
