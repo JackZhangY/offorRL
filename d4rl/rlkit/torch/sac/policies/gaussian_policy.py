@@ -125,7 +125,7 @@ class TanhGaussianPolicy(Mlp, TorchStochasticPolicy):
         log_prob = tanh_normal.log_prob(
             action,
         )
-        log_prob = log_prob.sum(dim=1, keepdim=True)
+        log_prob = log_prob.unsqueeze(-1)
         return log_prob
 
 
@@ -196,6 +196,11 @@ class GaussianPolicy(Mlp, TorchStochasticPolicy):
 
         return MultivariateDiagonalNormal(mean, std)
 
+    def logprob(self, actions, mean, std):
+        multi_normal = MultivariateDiagonalNormal(mean, std)
+        log_prob = multi_normal.log_prob(actions)
+        log_prob = log_prob.unsqueeze(-1)
+        return log_prob
 
 
 class GaussianCNNPolicy(CNN, TorchStochasticPolicy):
