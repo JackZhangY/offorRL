@@ -267,6 +267,11 @@ class CQLTrainer(TorchTrainer):
         """
         Update networks
         """
+
+        # solve the backprops issue existed in the original source ('https://github.com/aviralkumar2907/CQL/issues/5')
+        # mainly change the update order of policy and Q networks, because if first updating Q network, the updated
+        # Q network will change the nodes to the variable 'q_new_actions' used for the policy updating.
+
         # Update policy first for release some nodes
         self.policy_optimizer.zero_grad()
         policy_loss.backward(retain_graph=False)
@@ -274,12 +279,12 @@ class CQLTrainer(TorchTrainer):
 
         # Update the Q-functions iff
         self.qf1_optimizer.zero_grad()
-        qf1_loss.backward(retain_graph=True)
+        qf1_loss.backward(retain_graph=False)
         self.qf1_optimizer.step()
 
         if self.num_qs > 1:
             self.qf2_optimizer.zero_grad()
-            qf2_loss.backward(retain_graph=True)
+            qf2_loss.backward(retain_graph=False)
             self.qf2_optimizer.step()
 
         """
