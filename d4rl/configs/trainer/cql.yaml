@@ -17,7 +17,7 @@ trainer:
     reward_scale: 1.,
     soft_target_tau: 0.005,
     automatic_entropy_tuning: True,
-    bc_warm_start: 5000,
+    bc_warm_start: 40000,
     num_qs: 2,
     temp: 1.0,
     min_q_version: 3,
