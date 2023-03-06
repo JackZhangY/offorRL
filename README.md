@@ -4,7 +4,9 @@ an offline RL repository in progress...
 ### Done & Planning
 
 - [x] [IQL](https://arxiv.org/abs/2110.06169) 
-- [ ] [CQL](https://arxiv.org/abs/2006.04779) 
+- [x] [CQL](https://arxiv.org/abs/2006.04779) 
+- [ ] [S4RL](https://arxiv.org/abs/2103.06326)
+
 
 ### Quick Start
 

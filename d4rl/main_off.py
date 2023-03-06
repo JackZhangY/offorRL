@@ -24,6 +24,7 @@ PolicyPool = {
 TrainerPool = {
     'IQL': IQLTrainer,
     'CQL': CQLTrainer,
+    'S4RL': S4RLTrainer
 }
 
 
