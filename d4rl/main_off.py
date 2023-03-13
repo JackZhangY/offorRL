@@ -19,12 +19,13 @@ from rlkit.core import logger
 
 PolicyPool = {
     'GaussianPolicy': GaussianPolicy,
-    'TanhGaussianPolicy': TanhGaussianPolicy
+    'TanhGaussianPolicy': TanhGaussianPolicy,
 }
 TrainerPool = {
     'IQL': IQLTrainer,
     'CQL': CQLTrainer,
-    'S4RL': S4RLTrainer
+    'S4RL': S4RLTrainer,
+    'SQL': SQLTrainer,
 }
 
 
