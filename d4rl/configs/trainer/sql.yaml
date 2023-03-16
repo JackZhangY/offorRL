@@ -16,9 +16,9 @@ trainer:
     qf_lr: 3E-4,
     reward_scale: 1.,
     soft_target_tau: 0.005,
-    alpha: 2,
+    alpha: 2.,
     cosine_lr_decay: True,
-    clip_score: 100
+    clip_score: 100.
   }
   exp_prefix: 'r_norm=${trainer.reward_norm}_s_norm=${trainer.obs_norm}_soft_tau=${trainer.trainer_kwargs.soft_target_tau}_alpha=${trainer.trainer_kwargs.alpha}_cosine=${trainer.trainer_kwargs.cosine_lr_decay}_clip_score=${trainer.trainer_kwargs.clip_score}'
 
