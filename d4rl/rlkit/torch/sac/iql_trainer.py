@@ -9,6 +9,7 @@ import torch
 import torch.optim as optim
 from rlkit.torch.sac.policies import MakeDeterministic
 from torch import nn as nn
+from torch.autograd import Variable, grad
 import rlkit.torch.pytorch_util as ptu
 from rlkit.core.eval_util import create_stats_ordered_dict
 from rlkit.torch.core import np_to_pytorch_batch
@@ -20,6 +21,7 @@ import torch.nn.functional as F
 from rlkit.torch.networks import LinearTransform
 import time
 
+EPS = np.finfo(np.float32).eps
 
 class IQLTrainer(TorchTrainer):
     def __init__(
@@ -57,7 +59,8 @@ class IQLTrainer(TorchTrainer):
             target_update_period=1,
             beta=1.0,
             total_training_steps=1E6,
-            cosine_lr_decay=False
+            cosine_lr_decay=False,
+            lambda_=1.,
     ):
         super().__init__()
         self.env = env
@@ -131,6 +134,25 @@ class IQLTrainer(TorchTrainer):
         self.clip_score = clip_score
         self.beta = beta
         self.quantile = quantile
+        self.lambda_ = lambda_
+
+    def grad_penalty(self, obs):
+
+        var_obs = Variable(obs, requires_grad=True)
+        var_vf = self.vf(var_obs)
+        ones = torch.ones(var_vf.size()).to(ptu.device)
+
+        gradient = grad(
+            outputs=var_vf,
+            inputs=var_obs,
+            grad_outputs=ones,
+            create_graph=True,
+            retain_graph=True,
+            only_inputs=True,
+        )[0] + EPS
+
+        grad_penalty = (gradient.norm(2, dim=1) - 1).pow(2).mean()
+        return grad_penalty
 
     def train_from_torch(self, batch, train=True, pretrain=False,):
         rewards = batch['rewards']
@@ -171,7 +193,11 @@ class IQLTrainer(TorchTrainer):
         vf_err = vf_pred - q_pred
         vf_sign = (vf_err > 0).float()
         vf_weight = (1 - vf_sign) * self.quantile + vf_sign * (1 - self.quantile)
-        vf_loss = (vf_weight * (vf_err ** 2)).mean()
+        vf_loss_er = (vf_weight * (vf_err ** 2)).mean()
+
+        '''Lip-reg on VF'''
+        vf_grad_penalty = self.grad_penalty(obs)
+        vf_loss = vf_loss_er + self.lambda_ * vf_grad_penalty
 
         """
         Policy Loss
@@ -272,6 +298,8 @@ class IQLTrainer(TorchTrainer):
                 ptu.get_numpy(vf_pred),
             ))
             self.eval_statistics['VF Loss'] = np.mean(ptu.get_numpy(vf_loss))
+            self.eval_statistics['VF er Loss'] = np.mean(ptu.get_numpy(vf_loss_er))
+            self.eval_statistics['VF grad_penalty Loss'] = np.mean(ptu.get_numpy(vf_grad_penalty))
 
         self._n_train_steps_total += 1
 
