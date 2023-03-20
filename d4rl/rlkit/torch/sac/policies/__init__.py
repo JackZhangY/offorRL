@@ -15,6 +15,7 @@ from rlkit.torch.sac.policies.gaussian_policy import (
 )
 from rlkit.torch.sac.policies.lvm_policy import LVMPolicy
 from rlkit.torch.sac.policies.policy_from_q import PolicyFromQ
+from rlkit.torch.sac.policies.vae_policy import VaePolicy
 
 
 __all__ = [
@@ -31,4 +32,5 @@ __all__ = [
     'TanhCNNGaussianPolicy',
     'LVMPolicy',
     'PolicyFromQ',
+    'VaePolicy'
 ]

@@ -30,6 +30,7 @@ class BaseRLAlgorithm(object, metaclass=abc.ABCMeta):
             exploration_data_collector: DataCollector,
             evaluation_data_collector: DataCollector,
             replay_buffer: ReplayBuffer,
+            save_snapshot=False,
     ):
         self.trainer = trainer
         self.expl_env = exploration_env
@@ -38,6 +39,7 @@ class BaseRLAlgorithm(object, metaclass=abc.ABCMeta):
         self.eval_data_collector = evaluation_data_collector
         self.replay_buffer = replay_buffer
         self._start_epoch = 0
+        self.save_snapshot = save_snapshot
 
         self.post_epoch_funcs = []
 
@@ -55,8 +57,10 @@ class BaseRLAlgorithm(object, metaclass=abc.ABCMeta):
         pass
 
     def _end_epoch(self, epoch):
-        snapshot = self._get_snapshot()
-        logger.save_itr_params(epoch, snapshot)
+        if self.save_snapshot:
+            snapshot = self._get_snapshot()
+            logger.save_itr_params(epoch, snapshot)
+
         gt.stamp('saving')
         self._log_stats(epoch)
 

@@ -5,7 +5,8 @@ an offline RL repository in progress...
 
 - [x] [IQL](https://arxiv.org/abs/2110.06169) 
 - [x] [CQL](https://arxiv.org/abs/2006.04779) 
-- [ ] [S4RL](https://arxiv.org/abs/2103.06326)
+- [x] [S4RL](https://arxiv.org/abs/2103.06326)
+- [x] [SQL/IVR](https://openreview.net/pdf?id=ueYYgo2pSSU)
 
 
 ### Quick Start

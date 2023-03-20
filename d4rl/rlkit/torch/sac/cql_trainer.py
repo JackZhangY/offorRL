@@ -46,6 +46,8 @@ class CQLTrainer(TorchTrainer):
 
         super().__init__()
         self.env = env
+        self.max_action = float(env.action_space.high[0])
+        self.min_action = float(env.action_space.low[0])
         self.policy = policy
         self.qf1 = qf1
         self.qf2 = qf2
@@ -127,6 +129,7 @@ class CQLTrainer(TorchTrainer):
         normal_mean = actions_dist.normal_mean # no tanh()
         normal_std = actions_dist.stddev
         new_obs_actions, log_pi = actions_dist.rsample_and_logprob() # (bs, act_dim), (bs,)
+        new_obs_actions = new_obs_actions.clamp(self.min_action - 1e-6, self.max_action + 1e-6) # only useful for Gaussian dist samples
 
         return new_obs_actions, normal_mean, normal_std, log_pi.view(log_pi.shape[0], 1)
 

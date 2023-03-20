@@ -20,14 +20,19 @@ from rlkit.core import logger
 PolicyPool = {
     'GaussianPolicy': GaussianPolicy,
     'TanhGaussianPolicy': TanhGaussianPolicy,
+    'VaePolicy': VaePolicy,
 }
 TrainerPool = {
     'IQL': IQLTrainer,
     'CQL': CQLTrainer,
     'S4RL': S4RLTrainer,
     'SQL': SQLTrainer,
+    'BC': BCTrainer,
 }
 
+def save_model(save_path, trainer):
+    assert os.path.exists(save_path), 'no such config folder, should make this path before calling this...'
+    torch.save(trainer.policy.state_dict(), os.path.join(save_path, 'final_policy.pth'))
 
 @hydra.main(config_path='configs', config_name='base.yaml')
 def main(args):
@@ -73,6 +78,8 @@ def main(args):
     obs_dim = eval_env.observation_space.low.size
     action_dim = eval_env.action_space.low.size
     max_action = float(eval_env.action_space.high[0])
+    if args.trainer.policy_kwargs.get('max_action') is not None:
+        args.trainer.policy_kwargs.max_action =max_action
 
     # replay buffer
     replay_buffer = EnvReplayBuffer(args.buffer.max_replay_buffer_size, eval_env,
@@ -91,26 +98,29 @@ def main(args):
     ### AC network
     # critic network
     qf_kwargs = args.trainer.qf_kwargs
-    qf1 = ConcatMlp(
-        input_size=obs_dim + action_dim,
-        output_size=1,
-        **qf_kwargs
-    )
-    qf2 = ConcatMlp(
-        input_size=obs_dim + action_dim,
-        output_size=1,
-        **qf_kwargs
-    )
-    target_qf1 = ConcatMlp(
-        input_size=obs_dim + action_dim,
-        output_size=1,
-        **qf_kwargs
-    )
-    target_qf2 = ConcatMlp(
-        input_size=obs_dim + action_dim,
-        output_size=1,
-        **qf_kwargs
-    )
+    if qf_kwargs is not None:
+        qf1 = ConcatMlp(
+            input_size=obs_dim + action_dim,
+            output_size=1,
+            **qf_kwargs
+        )
+        qf2 = ConcatMlp(
+            input_size=obs_dim + action_dim,
+            output_size=1,
+            **qf_kwargs
+        )
+        target_qf1 = ConcatMlp(
+            input_size=obs_dim + action_dim,
+            output_size=1,
+            **qf_kwargs
+        )
+        target_qf2 = ConcatMlp(
+            input_size=obs_dim + action_dim,
+            output_size=1,
+            **qf_kwargs
+        )
+    else:
+        qf1, qf2, target_qf1, target_qf2 = None, None, None, None
 
     if args.trainer.vf_kwargs is not None:
         vf = ConcatMlp(
@@ -198,8 +208,7 @@ def main(args):
     algorithm.to(ptu.device)
     algorithm.train()
 
-
-
+    save_model(log_dir, trainer)
 
 
 
