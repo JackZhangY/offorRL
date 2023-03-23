@@ -79,7 +79,7 @@ def main(args):
     action_dim = eval_env.action_space.low.size
     max_action = float(eval_env.action_space.high[0])
     if args.trainer.policy_kwargs.get('max_action') is not None:
-        args.trainer.policy_kwargs.max_action =max_action
+        args.trainer.policy_kwargs.max_action = max_action
 
     # replay buffer
     replay_buffer = EnvReplayBuffer(args.buffer.max_replay_buffer_size, eval_env,

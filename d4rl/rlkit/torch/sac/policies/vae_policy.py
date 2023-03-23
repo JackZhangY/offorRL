@@ -30,6 +30,7 @@ class VaePolicy(TorchStochasticPolicy):
         super().__init__()
         self.encoders = []
         self.decoders = []
+        self.latent_dim = latent_dim or action_dim * 2
 
         e_ipt_size = obs_dim + action_dim
 
@@ -39,10 +40,10 @@ class VaePolicy(TorchStochasticPolicy):
             self.__setattr__("e{}".format(i), e)
             self.encoders.append(e)
 
-        self.mean = nn.Linear(e_hidden_sizes[-1], latent_dim)
-        self.log_std = nn.Linear(e_hidden_sizes[-1], latent_dim)
+        self.mean = nn.Linear(e_hidden_sizes[-1], self.latent_dim)
+        self.log_std = nn.Linear(e_hidden_sizes[-1], self.latent_dim)
 
-        d_ipt_size = obs_dim + latent_dim
+        d_ipt_size = obs_dim + self.latent_dim
         for i, d_next_size in enumerate(d_hidden_sizes):
             d = nn.Linear(d_ipt_size, d_next_size)
             d_ipt_size = d_next_size
@@ -51,7 +52,6 @@ class VaePolicy(TorchStochasticPolicy):
 
         self.last_fc = nn.Linear(d_hidden_sizes[-1], action_dim)
 
-        self.latent_dim = latent_dim or action_dim * 2
         self.max_action = max_action
         self.iwae = iwae
 
@@ -89,9 +89,9 @@ class VaePolicy(TorchStochasticPolicy):
             a = d(a)
             a = F.relu(a)
         if self.max_action is not None:
-            return self.max_action * torch.tanh(self.d3(a))
+            return self.max_action * torch.tanh(self.last_fc(a))
         else:
-            return self.d3(a)
+            return self.last_fc(a)
 
     def log_prob(self, obs, action):
         if not self.iwae:
