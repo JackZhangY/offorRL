@@ -76,6 +76,7 @@ class BatchRLAlgorithm(BaseRLAlgorithm, metaclass=abc.ABCMeta):
 
     def _train(self):
         if self.epoch == 0 and self.min_num_steps_before_training > 0:
+            self.training_mode(False)
             init_expl_paths = self.expl_data_collector.collect_new_paths(
                 self.max_path_length,
                 self.min_num_steps_before_training,
@@ -86,6 +87,7 @@ class BatchRLAlgorithm(BaseRLAlgorithm, metaclass=abc.ABCMeta):
             self.expl_data_collector.end_epoch(-1)
 
         if self.epoch == self._start_epoch or (self.epoch + 1)% self.num_epochs_per_log_interval == 0:
+            self.training_mode(False)
             self.eval_data_collector.collect_new_paths(
                 self.max_path_length,
                 self.num_eval_steps_per_epoch,

@@ -4,16 +4,9 @@ import torch.nn.functional as F
 from torch.distributions.normal import Normal
 import rlkit.torch.pytorch_util as ptu
 import math
+from rlkit.torch.sac.policies.base import TorchStochasticPolicy
+from rlkit.torch.distributions import Delta
 
-
-from rlkit.torch.sac.policies.base import (
-    TorchStochasticPolicy,
-    PolicyFromDistributionGenerator,
-    MakeDeterministic,
-)
-from rlkit.torch.distributions import (
-    Delta, TanhNormal, MultivariateDiagonalNormal, GaussianMixture, GaussianMixtureFull,
-)
 
 
 class VaePolicy(TorchStochasticPolicy):

@@ -1,11 +1,8 @@
 import torch
 from rlkit.torch.sac.policies import *
-from tqdm import tqdm
-from rlkit.data_management.env_replay_buffer import EnvReplayBuffer
 import gym, d4rl
 import numpy as np
 import torch.nn.functional as F
-import random
 import rlkit.torch.pytorch_util as ptu
 from rlkit.torch.torch_rl_algorithm import TorchTrainer
 import torch.optim as optim
@@ -146,9 +143,6 @@ class BCTrainer(TorchTrainer):
     def to(self, device):
         self.policy.to(device)
 
-    # @property
-    # def alpha(self):
-    #     return self.log_alpha.exp()
     def _get_vae_actions(self, obs, actions, network=None):
         """
         obtain reconstructed actions from VAE
@@ -243,42 +237,6 @@ class BCTrainer(TorchTrainer):
         Policy update and logging
         """
 
-        # new_obs_actions, policy_mean, policy_std, log_pi = self._get_policy_actions(obs, network=self.policy)
-        #
-        # policy_log_prob = self.policy.logprob(actions, policy_mean, policy_std)
-        # policy_loss = -policy_log_prob.mean()
-        #
-        # # update alpha and add entropy into the BC objective
-        # if self.with_entropy_target:
-        #     alpha_loss = -(self.alpha * (log_pi + self.target_entropy).detach()).mean()
-        #     self.alpha_optimizer.zero_grad()
-        #     alpha_loss.backward()
-        #     self.alpha_optimizer.step()
-        #
-        #     policy_loss += (self.alpha.detach() * log_pi).mean()
-        #
-        # # update policy
-        # self.pi_optimizer.zero_grad()
-        # policy_loss.backward()
-        # self.pi_optimizer.step()
-        #
-        # if self.lr_decay:
-        #     self.pi_scheduler.step()
-        #     if self.with_entropy_target:
-        #         self.alpha_scheduler.step()
-        #
-        # """
-        # Save some statistics for eval
-        # """
-        # if self._need_to_update_eval_statistics:
-        #     self._need_to_update_eval_statistics = False
-        #     """
-        #     Eval should set this to None.
-        #     This way, these statistics are only computed for one batch.
-        #     """
-        #     self.eval_statistics['Policy Loss'] = np.mean(ptu.get_numpy(policy_loss))
-        #     self.eval_statistics['Policy log prob'] = np.mean(ptu.get_numpy(policy_log_prob))
-        #     self.eval_statistics['Log pi'] = np.mean(ptu.get_numpy(log_pi))
         if self.policy_type == 'single':
             self.gaussian_policy_update(obs, actions)
         elif self.policy_type == 'cvae':
@@ -307,57 +265,4 @@ class BCTrainer(TorchTrainer):
         return dict(
             policy=self.policy
         )
-
-
-
-# def bc_agent_training(
-#         env_name='hopper-medium-v2',
-#         obs_norm=False,
-#         training_steps=1E5,
-#         batch_size=256,
-#         bc_type='single',
-#         gpu_idx=0,
-#         seed=0
-# ):
-#     ptu.set_gpu_mode(True, gpu_idx)
-#     random.seed(seed)
-#     np.random.seed(seed)
-#     torch.manual_seed(seed)
-#
-#     env = gym.make(env_name)
-#     obs_dim = env.observation_space.low.size
-#     action_dim = env.action_space.low.size
-#
-#     if bc_type  == 'single':
-#         bc_agent = TanhGaussianPolicy([256, 256], obs_dim=obs_dim, action_dim=action_dim).to(ptu.device)
-#     elif bc_type == 'mix':
-#         # todo: mixture of (Tanh)Gaussian
-#         pass
-#     elif bc_type == 'cvae':
-#         # todo: cvae model for behavior cloning
-#         pass
-#     else:
-#         raise ValueError('no such option for behavior cloning')
-#
-#     replay_buffer = EnvReplayBuffer(int(2E6), env, online_finetune=False)
-#     replay_buffer.load_hdf5()
-#
-#     if obs_norm:
-#         replay_buffer.normalize_states()
-#
-#     for i in tqdm(range(int(training_steps))):
-#         bc_agent.
-#
-#
-#
-#
-#
-#     save_path = '~/.d4rl/pre_trained_models/'
-#     torch.save()
-#
-
-
-
-
-
 

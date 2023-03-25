@@ -75,7 +75,8 @@ class EnvReplayBuffer(SimpleReplayBuffer):
             self._next_obs = dataset['next_observations']
             self._actions = dataset['actions']
             if 'antmaze' in self.env_name:
-                self._rewards = (np.expand_dims(np.squeeze(dataset['rewards']), 1) - 0.5) * 4.0
+                # self._rewards = (np.expand_dims(np.squeeze(dataset['rewards']), 1) - 0.5) * 4.0
+                self._rewards = np.expand_dims(np.squeeze(dataset['rewards']), 1) - 1.
             else:
                 self._rewards = np.expand_dims(np.squeeze(dataset['rewards']), 1)
             self._terminals = np.expand_dims(np.squeeze(dataset['terminals']), 1)
@@ -96,7 +97,8 @@ class EnvReplayBuffer(SimpleReplayBuffer):
             self._actions[:self._offline_size] = dataset['actions']
 
             if 'antmaze' in self.env_name:
-                self._rewards[:self._offline_size] = (np.expand_dims(np.squeeze(dataset['rewards']), 1) - 0.5) * 4.0
+                # self._rewards[:self._offline_size] = (np.expand_dims(np.squeeze(dataset['rewards']), 1) - 0.5) * 4.0
+                self._rewards[:self._offline_size] = np.expand_dims(np.squeeze(dataset['rewards']), 1) - 1.
             else:
                 self._rewards[:self._offline_size] = np.expand_dims(np.squeeze(dataset['rewards']), 1)
 

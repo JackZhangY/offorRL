@@ -24,6 +24,7 @@ class Mlp(PyTorchModule):
             b_init_value=0.,
             layer_norm=False,
             layer_norm_kwargs=None,
+            dropout_rate=0.
     ):
         super().__init__()
 
@@ -35,8 +36,10 @@ class Mlp(PyTorchModule):
         self.hidden_activation = hidden_activation
         self.output_activation = output_activation
         self.layer_norm = layer_norm
+        self.dropout_rate = dropout_rate
         self.fcs = []
         self.layer_norms = []
+        self.dropouts = []
         in_size = input_size
 
         for i, next_size in enumerate(hidden_sizes):
@@ -51,6 +54,10 @@ class Mlp(PyTorchModule):
                 ln = LayerNorm(next_size)
                 self.__setattr__("layer_norm{}".format(i), ln)
                 self.layer_norms.append(ln)
+            if self.dropout_rate is not None and self.dropout_rate > 0:
+                dout = nn.Dropout(self.dropout_rate)
+                self.__setattr__("dropout{}".format(i), dout)
+                self.dropouts.append(dout)
 
         self.last_fc = nn.Linear(in_size, output_size)
         self.last_fc.weight.data.uniform_(-init_w, init_w)
@@ -63,6 +70,9 @@ class Mlp(PyTorchModule):
             if self.layer_norm and i < len(self.fcs) - 1:
                 h = self.layer_norms[i](h)
             h = self.hidden_activation(h)
+            if self.dropout_rate is not None and self.dropout_rate > 0:
+                h = self.dropouts[i](h)
+
         preactivation = self.last_fc(h)
         output = self.output_activation(preactivation)
         if return_preactivations:
