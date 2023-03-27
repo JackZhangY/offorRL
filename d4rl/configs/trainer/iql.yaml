@@ -24,7 +24,12 @@ trainer:
     clip_score: 100.,
     lambda_: 1.
   }
-  exp_prefix: 'r_norm=${trainer.reward_norm}_s_norm=${trainer.obs_norm}_lambda=${trainer.trainer_kwargs.lambda_}_soft_tau=${trainer.trainer_kwargs.soft_target_tau}_beta=${trainer.trainer_kwargs.beta}_quantile=${trainer.trainer_kwargs.quantile}_clip_score=${trainer.trainer_kwargs.clip_score}'
+  exp_prefix: "r_norm=${trainer.reward_norm}_s_norm=${trainer.obs_norm}\
+    _lambda=${trainer.trainer_kwargs.lambda_}\
+    _soft_tau=${trainer.trainer_kwargs.soft_target_tau}\
+    _beta=${trainer.trainer_kwargs.beta}\
+    _quantile=${trainer.trainer_kwargs.quantile}\
+    _clip_score=${trainer.trainer_kwargs.clip_score}"
 
 
 

@@ -30,6 +30,10 @@ trainer:
     # s4rl
     s4rl: {type: 'normal', params: 0.003} # 'adv', 0.0001  / 'uniform', 0.0003
   }
-  exp_prefix: 's4rl=${trainer.trainer_kwargs.s4rl.type},${trainer.trainer_kwargs.s4rl.params}_mqw=${trainer.trainer_kwargs.min_q_weight}_lagrange=${trainer.trainer_kwargs.with_lagrange},${trainer.trainer_kwargs.lagrange_thresh}_auto_tuning=${trainer.trainer_kwargs.automatic_entropy_tuning}_det_back=${trainer.trainer_kwargs.deterministic_backup}'
+  exp_prefix: "s4rl=${trainer.trainer_kwargs.s4rl.type},${trainer.trainer_kwargs.s4rl.params}\
+    _mqw=${trainer.trainer_kwargs.min_q_weight}\
+    _lagrange=${trainer.trainer_kwargs.with_lagrange},${trainer.trainer_kwargs.lagrange_thresh}\
+    _auto_tuning=${trainer.trainer_kwargs.automatic_entropy_tuning}\
+    _det_back=${trainer.trainer_kwargs.deterministic_backup}"
 
 

@@ -20,6 +20,9 @@ trainer:
 #    scheduler: False,
 #    gamma: 0.95,
   }
-  exp_prefix: '${trainer.policy_type}_s_norm=${trainer.obs_norm}_TS=${trainer.trainer_kwargs.total_training_steps}_LR=${trainer.trainer_kwargs.policy_lr}_LD=${trainer.trainer_kwargs.lr_decay}_WET=${trainer.trainer_kwargs.with_entropy_target}'
-#  exp_prefix: '${trainer.policy_type}_s_norm=${trainer.obs_norm}_TS=${trainer.trainer_kwargs.total_training_steps}_LR=${trainer.trainer_kwargs.policy_lr}_Beta=${trainer.trainer_kwargs.beta}'
+#  exp_prefix: '${trainer.policy_type}_s_norm=${trainer.obs_norm}_TS=${trainer.trainer_kwargs.total_training_steps}_LR=${trainer.trainer_kwargs.policy_lr}_LD=${trainer.trainer_kwargs.lr_decay}_WET=${trainer.trainer_kwargs.with_entropy_target}'
+  exp_prefix: "${trainer.policy_type}_s_norm=${trainer.obs_norm}\
+  _TS=${trainer.trainer_kwargs.total_training_steps}\
+  _LR=${trainer.trainer_kwargs.policy_lr}\
+  _Beta=${trainer.trainer_kwargs.beta}"
 
