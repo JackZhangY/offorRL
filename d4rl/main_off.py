@@ -28,6 +28,7 @@ TrainerPool = {
     'S4RL': S4RLTrainer,
     'SQL': SQLTrainer,
     'BC': BCTrainer,
+    'IKL': IKLTrainer,
 }
 
 def save_model(save_path, trainer):
