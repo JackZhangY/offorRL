@@ -33,7 +33,7 @@ class EnvReplayBuffer(SimpleReplayBuffer):
         self.env = env
         self._ob_space = env.observation_space
         self._action_space = env.action_space
-        self.env_name = self.env.spec.name
+        self.env_name = self.env.spec.id
         self.online_finetune = online_finetune
 
         if env_info_sizes is None:

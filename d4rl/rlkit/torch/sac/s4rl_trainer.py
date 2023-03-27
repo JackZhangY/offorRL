@@ -57,6 +57,7 @@ class S4RLTrainer(TorchTrainer):
         self.discount = discount
         self.reward_scale = reward_scale
         self.eval_statistics = OrderedDict()
+        self._need_to_update_eval_statistics = True
 
         # setting of loss and optimizer
         self.qf_criterion = nn.MSELoss()

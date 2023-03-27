@@ -51,6 +51,7 @@ class SQLTrainer(TorchTrainer):
         self.target_qf1 = target_qf1
         self.target_qf2 = target_qf2
         self.eval_statistics = OrderedDict()
+        self._need_to_update_eval_statistics = True
 
 
         self.qf_criterion = nn.MSELoss()
