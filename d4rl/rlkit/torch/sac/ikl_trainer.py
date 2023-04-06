@@ -48,6 +48,7 @@ class IKLTrainer(TorchTrainer):
                  u_clip=None,
                  bc_type='TanhGaussianPolicy',
                  bc_kwargs=dict(hidden_sizes=(256, 256)),
+                 bc_norm='False',
                  log_dir=None,
                  ):
 
@@ -65,6 +66,7 @@ class IKLTrainer(TorchTrainer):
         self.vf = vf
 
         self.bc_type = bc_type
+        self.bc_norm = bc_norm
         self.log_dir = log_dir
         bc_checkpoint = self.bc_checkpoint()
         self.obs_dim = self.env.observation_space.low.size
@@ -106,17 +108,18 @@ class IKLTrainer(TorchTrainer):
         self.reward_bonus = reward_bonus
         self.alpha = alpha # additional coefficient multiplied in the log_prob ratio of current state-action
         self.tau = tau # coefficient for the KL term of next state with behavior policy
-        self.l_clip = l_clip
+        self.l_clip = float(l_clip)
         self.u_clip = u_clip
 
     def bc_checkpoint(self):
         bc_trainer_dir = os.path.join(self.log_dir, self.env.spec.id, 'BC')
-        file_dir_list, num_files = collect_file_folder(bc_trainer_dir, self.bc_type)
+        file_dir_list, num_files = collect_file_folder(bc_trainer_dir, self.bc_type+'_s_norm={}'.format(self.bc_norm))
         if num_files == 0:
             raise ValueError('No such type of BC policy')
         elif num_files > 1:
             raise ValueError('More than one BC policy, please specify the one should be chosen')
         else:
+            print('will load BC agent from: \'{}\''.format(file_dir_list[0]))
             return os.path.join(file_dir_list[0], 'final_policy.pth')
 
     def _get_tensor_values(self, obs, actions, network=None):
@@ -179,16 +182,16 @@ class IKLTrainer(TorchTrainer):
 
         # kl term of next state
         next_obs_actions, _, _, next_log_pi = self._get_policy_actions(next_obs, num_actions=self.num_qs, network=self.policy)
-        next_log_pi = next_log_pi.view(obs.shape[0], self.num_qs, 1)
-        next_obs_temp = next_obs.unsqueeze(1).repeat(1, self.num_qs, 1).view(obs.shape[0] * self.num_qs, obs.shape[1])
-        bc_next_log_pi = self.bc_log_prob(next_obs_temp, next_obs_actions).view(obs.shape[0], self.num_qs, 1) # (bs, num_qs, 1)
+        next_log_pi = next_log_pi.view(next_obs.shape[0], self.num_qs, 1)
+        next_obs_temp = next_obs.unsqueeze(1).repeat(1, self.num_qs, 1).view(next_obs.shape[0] * self.num_qs, next_obs.shape[1])
+        bc_next_log_pi = self.bc_log_prob(next_obs_temp, next_obs_actions).view(next_obs.shape[0], self.num_qs, 1) # (bs, num_qs, 1)
 
-        next_state_kl = torch.mean(next_log_pi - bc_next_log_pi,dim=1, keepdim=False) #(bs, 1)
+        next_state_kl = torch.mean(next_log_pi - bc_next_log_pi, dim=1, keepdim=False) #(bs, 1)
 
         # q target loss
-        next_target_q1 = torch.mean(self.target_qf1(next_obs_temp, next_obs_actions).view(obs.shape[0], self.num_qs, 1),
+        next_target_q1 = torch.mean(self.target_qf1(next_obs_temp, next_obs_actions).view(next_obs.shape[0], self.num_qs, 1),
                                     dim=1) # (bs, 1)
-        next_target_q2 = torch.mean(self.target_qf2(next_obs_temp, next_obs_actions).view(obs.shape[0], self.num_qs, 1),
+        next_target_q2 = torch.mean(self.target_qf2(next_obs_temp, next_obs_actions).view(next_obs.shape[0], self.num_qs, 1),
                                     dim=1)
 
         target_q_next_values = torch.min(

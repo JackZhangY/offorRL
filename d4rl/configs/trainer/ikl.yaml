@@ -23,6 +23,7 @@ trainer:
     tau: 0.9,
     l_clip: -1.0,
     bc_type: 'TanhGaussianPolicy',
+    bc_norm: '${trainer.obs_norm}',
     log_dir: '${logger.log_dir}',
   }
   exp_prefix: "r_norm=${trainer.reward_norm}_s_norm=${trainer.obs_norm}\
