@@ -102,7 +102,7 @@ class BatchRLAlgorithm(BaseRLAlgorithm, metaclass=abc.ABCMeta):
             )
             if self.save_best:
                 eval_paths = self.eval_data_collector.get_epoch_paths()
-                eval_stats = eval_util.get_generic_path_information(eval_paths, env=self.eval_env),
+                eval_stats = eval_util.get_generic_path_information(eval_paths, env=self.eval_env)
                 if eval_stats['Normalized Returns'] > self.cur_best:
                     save_model(self.log_dir, self.trainer, name='best_policy.pth')
                     print('best policy changes at {} epochs'.format(self.epoch))
