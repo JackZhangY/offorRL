@@ -2,6 +2,8 @@ import abc
 
 import gtimer as gt
 from rlkit.core.rl_algorithm import BaseRLAlgorithm
+from rlkit.core import eval_util
+from rlkit.util.io import save_model
 from rlkit.data_management.replay_buffer import ReplayBuffer
 from rlkit.samplers.data_collector import PathCollector
 
@@ -26,7 +28,9 @@ class BatchRLAlgorithm(BaseRLAlgorithm, metaclass=abc.ABCMeta):
             min_num_steps_before_training=0,
             start_epoch=0, # negative epochs are offline, positive epochs are online
             num_epochs_per_log_interval=1,
-            online_finetune=False # whether to implement offline2online
+            online_finetune=False, # whether to implement offline2online
+            save_best=False,
+            log_dir=None
     ):
         super().__init__(
             trainer,
@@ -48,6 +52,9 @@ class BatchRLAlgorithm(BaseRLAlgorithm, metaclass=abc.ABCMeta):
         self._start_epoch = start_epoch
         self.num_epochs_per_log_interval = num_epochs_per_log_interval
         self.online_finetune = online_finetune
+        self.save_best = save_best
+        self.log_dir = log_dir
+        self.cur_best = -float('inf')
 
         assert int((self.num_epochs - self._start_epoch) * self.num_train_loops_per_epoch * self.num_trains_per_train_loop)\
                == int(self.total_training_steps), 'mismatch of total training steps indicated in \'trainer\' and \'algorithm\''
@@ -93,6 +100,14 @@ class BatchRLAlgorithm(BaseRLAlgorithm, metaclass=abc.ABCMeta):
                 self.num_eval_steps_per_epoch,
                 discard_incomplete_paths=True,
             )
+            if self.save_best:
+                eval_paths = self.eval_data_collector.get_epoch_paths()
+                eval_stats = eval_util.get_generic_path_information(eval_paths, env=self.eval_env),
+                if eval_stats['Normalized Returns'] > self.cur_best:
+                    save_model(self.log_dir, self.trainer, name='best_policy.pth')
+                    print('best policy changes at {} epochs'.format(self.epoch))
+                    self.cur_best = eval_stats['Normalized Returns']
+
             gt.stamp('evaluation sampling')
 
         for _ in range(self.num_train_loops_per_epoch):

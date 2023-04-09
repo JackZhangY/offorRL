@@ -22,6 +22,10 @@ def collect_file_folder(file_path, config_prefix):
 
     return file_dir_list, file_num
 
+def save_model(save_path, trainer, name='final_policy.pth'):
+    assert os.path.exists(save_path), 'no such config folder, should make this path before calling this...'
+    torch.save(trainer.policy.state_dict(), os.path.join(save_path, name))
+
 # def local_path_from_s3_or_local_path(filename):
 #     relative_filename = os.path.join(LOCAL_LOG_DIR, filename)
 #     if os.path.isfile(filename):

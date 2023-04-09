@@ -25,6 +25,7 @@ rlalg:
   num_expl_steps_per_train_loop: 1000
   min_num_steps_before_training: 1000 # used at the beginning of online finetune
   num_epochs_per_log_interval: 1
+  save_best: False
 
 
 trainer:

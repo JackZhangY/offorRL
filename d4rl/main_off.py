@@ -16,6 +16,7 @@ from rlkit.torch.sac import *
 from rlkit.torch.torch_rl_algorithm import TorchBatchRLAlgorithm
 from rlkit.launchers.launcher_util import setup_logger, omegaconf_to_dict
 from rlkit.core import logger
+from rlkit.util.io import save_model
 
 PolicyPool = {
     'GaussianPolicy': GaussianPolicy,
@@ -31,9 +32,6 @@ TrainerPool = {
     'IKL': IKLTrainer,
 }
 
-def save_model(save_path, trainer):
-    assert os.path.exists(save_path), 'no such config folder, should make this path before calling this...'
-    torch.save(trainer.policy.state_dict(), os.path.join(save_path, 'final_policy.pth'))
 
 @hydra.main(config_path='configs', config_name='base.yaml')
 def main(args):
@@ -200,6 +198,7 @@ def main(args):
         replay_buffer=replay_buffer,
         max_path_length=eval_env._max_episode_steps,
         total_training_steps=args.trainer.trainer_kwargs.total_training_steps,
+        log_dir=log_dir,
         **args.rlalg
     )
 
@@ -209,7 +208,7 @@ def main(args):
     algorithm.to(ptu.device)
     algorithm.train()
 
-    save_model(log_dir, trainer)
+    save_model(log_dir, trainer, name='final_policy.pth')
 
 
 
