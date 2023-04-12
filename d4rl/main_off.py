@@ -30,6 +30,7 @@ TrainerPool = {
     'SQL': SQLTrainer,
     'BC': BCTrainer,
     'IKL': IKLTrainer,
+    'IKL2': IKL2Trainer,
 }
 
 

@@ -1,23 +1,15 @@
 import os
 import pandas as pd
 import numpy as np
+from rlkit.util.io import collect_file_folder
 import matplotlib.pyplot as plt
 
 RADIUS = 10
+LAST_EPI = 10
+TOT_LEN = 1000
 convkernel = np.ones(2 * RADIUS + 1)
 COLORS = ['red', 'blue', 'green', 'm', 'magenta', 'brown', 'yellow', 'purple', 'black']
 
-LAST_EPI = 10
-
-def collect_file_folder(file_path, config_prefix):
-    file_dir_list = []
-    file_num = 0
-    for dir in os.listdir(file_path):
-        if dir.startswith(config_prefix):
-            file_dir_list.append(os.path.join(file_path, dir))
-            file_num += 1
-
-    return file_dir_list, file_num
 
 def load_total_results(file_path, config_prefix, items):
     file_dir_list, num_seeds = collect_file_folder(file_path, config_prefix)
@@ -40,7 +32,7 @@ def smooth_plot(total_data, curr_len, item_idx, color, label):
                       / np.convolve(np.ones_like(single_data[:, item_idx]), convkernel, mode='same')
         tot_smooth_data.append(smooth_data[:curr_len])
 
-    x_ = np.arange(0, curr_len) / curr_len * (1 * curr_len / 1000)
+    x_ = np.arange(0, curr_len) / curr_len * (1 * curr_len / TOT_LEN)
     y_mean = np.mean(tot_smooth_data, axis=0)
     y_std = np.std(tot_smooth_data, axis=0)
     # y_std_err = y_std / np.sqrt(len(tot_smooth_data))
@@ -53,15 +45,27 @@ def smooth_plot(total_data, curr_len, item_idx, color, label):
 
 
 env_types = [
+    'random',
     'medium',
     'medium-replay',
     'medium-expert',
     'expert',
+    # 'umaze',
+    # 'umaze-diverse',
+    # 'medium-play',
+    # 'medium-diverse',
+    # 'large-play',
+    # 'large-diverse'
+    # 'complete',
+    # 'partial',
+    # 'mixed'
 ]
 env_names = [
     'halfcheetah',
     'hopper',
     'walker2d',
+    # 'antmaze',
+    # 'kitchen'
 ]
 
 
@@ -78,6 +82,14 @@ if __name__ == '__main__':
     color_idx = 0
     for env_type in env_types:
         for env_name in env_names:
+            if 'antmaze' in env_name:
+                RADIUS = 1
+                LAST_EPI = 1
+                TOT_LEN = 21
+            if 'kitchen' in env_name:
+                RADIUS = 1
+                LAST_EPI = 2
+                TOT_LEN = 51
             try:
                 total_data, curr_len = load_total_results(file_path.format(env_name, env_type), prefix_name, item_plot)
                 print('current length: {}; total seeds: {}'.format(curr_len, len(total_data)))

@@ -15,7 +15,7 @@ EPS = np.finfo(np.float32).eps
 MEAN_MIN = -9.0
 MEAN_MAX = 9.0
 
-class IKLTrainer(TorchTrainer):
+class IKL2Trainer(TorchTrainer):
     def __init__(self,
                  env,
                  policy,
@@ -39,13 +39,17 @@ class IKLTrainer(TorchTrainer):
                  bc_warm_start=0,
                  total_training_steps=1E6,
 
-                 num_qs=1,
                  f_reg=1.0,
                  reward_bonus=5.0,
                  alpha=0.03,
                  tau=0.9,
+                 quantile=0.9,
                  l_clip=-1.0,
                  u_clip=None,
+
+                 cosine_lr_decay=False,
+                 clip_score=None,
+
                  bc_type='TanhGaussianPolicy',
                  bc_kwargs=dict(hidden_sizes=(256, 256)),
                  bc_norm='False',
@@ -81,6 +85,11 @@ class IKLTrainer(TorchTrainer):
             self.policy.parameters(),
             lr=policy_lr
         )
+        self.total_training_steps = total_training_steps
+        self.cosine_lr_decay = cosine_lr_decay
+        if self.cosine_lr_decay:
+            self.lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(self.policy_optimizer,
+                                                                           int(self.total_training_steps))
 
         self.qf1_optimizer = optimizer_class(
             self.qf1.parameters(),
@@ -92,6 +101,11 @@ class IKLTrainer(TorchTrainer):
             lr=qf_lr
         )
 
+        self.vf_optimizer = optimizer_class(
+            self.vf.parameters(),
+            lr=qf_lr
+        )
+
         self.discount = discount
         self.reward_scale = reward_scale
         self.soft_target_tau = soft_target_tau
@@ -99,19 +113,19 @@ class IKLTrainer(TorchTrainer):
         self.policy_update_period = policy_update_period
         self.q_update_period = q_update_period
         self.target_update_period = target_update_period
-        self.total_training_steps = total_training_steps
         self._n_train_steps_total = 0
         self.eval_statistics = OrderedDict()
         self._need_to_update_eval_statistics=True
         self.bc_warm_start = bc_warm_start
 
-        self.num_qs = num_qs
         self.f_reg = f_reg
         self.reward_bonus = reward_bonus
         self.alpha = alpha # additional coefficient multiplied in the log_prob ratio of current state-action
         self.tau = tau # coefficient for the KL term of next state with behavior policy
+        self.quantile = quantile
         self.l_clip = float(l_clip)
         self.u_clip = u_clip
+        self.clip_score = clip_score or 100.0
 
     def bc_checkpoint(self):
         bc_trainer_dir = os.path.join(self.log_dir, self.env.spec.id, 'BC')
@@ -177,42 +191,25 @@ class IKLTrainer(TorchTrainer):
         next_obs = batch['next_observations']
 
         """
-        Critic Loss
+        QF Loss
         """
-
-        new_obs_actions, normal_mean, normal_std, _ = self._get_policy_actions(obs, network=self.policy)
-        log_actions = self.policy.logprob(actions, normal_mean, normal_std)
+        dist = self.policy(obs)
+        new_obs_actions, log_pi = dist.rsample_and_logprob() # (bs, act_dim), (bs,)
+        log_actions = dist.log_prob(actions) # (bs,)
+        log_actions = log_actions.unsqueeze(-1) # (bs, 1)
         bc_log_actions = self.bc_log_prob(obs, actions)
         log_prob_ratio = (log_actions - bc_log_actions).clamp(min=self.l_clip, max=self.u_clip) # (bs, 1)
 
-        # kl term of next state
-        next_obs_actions, _, _, next_log_pi = self._get_policy_actions(next_obs, num_actions=self.num_qs, network=self.policy)
-        next_log_pi = next_log_pi.view(next_obs.shape[0], self.num_qs, 1)
-        next_obs_temp = next_obs.unsqueeze(1).repeat(1, self.num_qs, 1).view(next_obs.shape[0] * self.num_qs, next_obs.shape[1])
-        bc_next_log_pi = self.bc_log_prob(next_obs_temp, next_obs_actions).view(next_obs.shape[0], self.num_qs, 1) # (bs, num_qs, 1)
-
-        next_state_kl = torch.mean(next_log_pi - bc_next_log_pi, dim=1, keepdim=False) #(bs, 1)
-
-        # q target loss
-        next_target_q1 = torch.mean(self.target_qf1(next_obs_temp, next_obs_actions).view(next_obs.shape[0], self.num_qs, 1),
-                                    dim=1) # (bs, 1)
-        next_target_q2 = torch.mean(self.target_qf2(next_obs_temp, next_obs_actions).view(next_obs.shape[0], self.num_qs, 1),
-                                    dim=1)
-
-        target_q_next_values = torch.min(
-            next_target_q1 - self.tau * next_state_kl,
-            next_target_q2 - self.tau * next_state_kl,
-        )
-
-        target_q = self.reward_scale * rewards + self.reward_bonus + self.tau * self.alpha * log_prob_ratio \
-                   + (1.0 - terminals) * self.discount * target_q_next_values
-        target_q = target_q.detach()
+        next_target_vf = self.vf(next_obs).detach()
+        q_target = self.reward_scale * rewards + self.reward_bonus + self.tau * self.alpha * log_prob_ratio \
+                   + (1.0 - terminals) * self.discount * next_target_vf
+        q_target = q_target.detach()
 
         q1_pred = self.qf1(obs, actions)
         q2_pred = self.qf2(obs, actions)
 
-        qf1_loss = nn.MSELoss()(q1_pred, target_q)
-        qf2_loss = nn.MSELoss()(q2_pred, target_q)
+        qf1_loss = nn.MSELoss()(q1_pred, q_target)
+        qf2_loss = nn.MSELoss()(q2_pred, q_target)
 
         # gradient regularization loss
         q1_grad_reg = self.grad_penalty(obs=obs, actions=new_obs_actions, network=self.qf1)
@@ -222,7 +219,31 @@ class IKLTrainer(TorchTrainer):
         total_q_loss = qf1_loss + qf2_loss + self.f_reg * q_grad_reg
 
         """
-        Critic Update
+        VF Loss
+        """
+        target_q_pred = torch.min(self.target_qf1(obs, actions), self.target_qf2(obs, actions))
+        neg_log_prob_ratio = (bc_log_actions - log_actions).clamp(min=self.l_clip, max=self.u_clip)
+        kl_target_q_pred = target_q_pred + self.tau * neg_log_prob_ratio
+        kl_target_q_pred = kl_target_q_pred.detach()
+
+        vf_pred = self.vf(obs)
+        vf_err = vf_pred - kl_target_q_pred
+        vf_sign = (vf_err > 0).float()
+        vf_weight = (1 - vf_sign) * self.quantile + vf_sign * (1 - self.quantile)
+        vf_loss = (vf_weight * (vf_err ** 2)).mean()
+
+        """
+        Policy Loss
+        """
+        adv = target_q_pred - vf_pred
+        exp_adv = torch.exp(adv / self.tau)
+        exp_adv = torch.clamp(exp_adv, max=self.clip_score)
+
+        weights = exp_adv.detach()
+        policy_loss = (-log_actions * weights).mean()
+
+        """
+        Update AC
         """
         if self._n_train_steps_total % self.q_update_period == 0:
             self.qf1_optimizer.zero_grad()
@@ -231,31 +252,17 @@ class IKLTrainer(TorchTrainer):
             self.qf1_optimizer.step()
             self.qf2_optimizer.step()
 
-        """
-        Policy Loss
-        """
-        policy_obs_actions, policy_normal_mean, policy_normal_std, log_pi = \
-            self._get_policy_actions(obs, num_actions=self.num_qs, network=self.policy)
-        obs_temp = obs.unsqueeze(1).repeat(1, self.num_qs, 1).view(obs.shape[0] * self.num_qs, obs.shape[1])
-        bc_log_pi = self.bc_log_prob(obs_temp, policy_obs_actions) #(bs*num_qs, 1)
-        state_kl = torch.mean((log_pi - bc_log_pi).view(obs.shape[0], self.num_qs, 1), dim=1) #(bs, 1)
+            self.vf_optimizer.zero_grad()
+            vf_loss.backward()
+            self.vf_optimizer.step()
 
-        q1_values = torch.mean(self.qf1(obs_temp, policy_obs_actions).view(obs.shape[0], self.num_qs, 1), dim=1)
-        q2_values = torch.mean(self.qf2(obs_temp, policy_obs_actions).view(obs.shape[0], self.num_qs, 1), dim=1)
-        q_values = torch.min(
-            q1_values,
-            q2_values
-        )
-
-        policy_loss = (self.tau * state_kl - q_values).mean()
-
-        """
-        Policy Update
-        """
         if self._n_train_steps_total % self.policy_update_period == 0:
             self.policy_optimizer.zero_grad()
             policy_loss.backward()
             self.policy_optimizer.step()
+
+        if self.cosine_lr_decay:
+            self.lr_scheduler.step()
 
         """
         Soft Updates
@@ -280,6 +287,7 @@ class IKLTrainer(TorchTrainer):
             self.eval_statistics['QF1 Loss'] = np.mean(ptu.get_numpy(qf1_loss))
             self.eval_statistics['QF2 Loss'] = np.mean(ptu.get_numpy(qf2_loss))
             self.eval_statistics['Q_grad_reg Loss'] = np.mean(ptu.get_numpy(q_grad_reg))
+            self.eval_statistics['VF Loss'] = np.mean(ptu.get_numpy(vf_loss))
             self.eval_statistics['Policy Loss'] = np.mean(ptu.get_numpy(
                 policy_loss
             ))
@@ -292,10 +300,9 @@ class IKLTrainer(TorchTrainer):
                 ptu.get_numpy(log_prob_ratio)
             ))
             self.eval_statistics.update(create_stats_ordered_dict(
-                'next state kl',
-                ptu.get_numpy(next_state_kl)
+                'Advantage Weights',
+                ptu.get_numpy(weights),
             ))
-            # self.eval_statistics['replay_buffer_len'] = self.replay_buffer._size
 
         self._n_train_steps_total += 1
 
@@ -313,6 +320,7 @@ class IKLTrainer(TorchTrainer):
             self.policy,
             self.qf1,
             self.qf2,
+            self.vf,
             self.target_qf1,
             self.target_qf2,
             self.bc_agent
@@ -324,36 +332,10 @@ class IKLTrainer(TorchTrainer):
             policy=self.policy,
             qf1=self.qf1,
             qf2=self.qf2,
+            vf=self.vf,
             target_qf1=self.target_qf1,
             target_qf2=self.target_qf2,
             bc_agent=self.bc_agent
         )
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
