@@ -108,7 +108,13 @@ class TanhGaussianPolicy(Mlp, TorchStochasticPolicy):
     def forward(self, obs):
         h = obs
         for i, fc in enumerate(self.fcs):
-            h = self.hidden_activation(fc(h))
+            # h = self.hidden_activation(fc(h))
+            h = fc(h)
+            if self.layer_norm and i < len(self.fcs) - 1:
+                h = self.layer_norms[i](h)
+            h = self.hidden_activation(h)
+            if self.dropout_rate is not None and self.dropout_rate > 0:
+                h = self.dropouts[i](h)
         mean = self.last_fc(h)
         if self.std is None:
             log_std = self.last_fc_log_std(h)
@@ -175,7 +181,13 @@ class GaussianPolicy(Mlp, TorchStochasticPolicy):
     def forward(self, obs):
         h = obs
         for i, fc in enumerate(self.fcs):
-            h = self.hidden_activation(fc(h))
+            # h = self.hidden_activation(fc(h))
+            h = fc(h)
+            if self.layer_norm and i < len(self.fcs) - 1:
+                h = self.layer_norms[i](h)
+            h = self.hidden_activation(h)
+            if self.dropout_rate is not None and self.dropout_rate > 0:
+                h = self.dropouts[i](h)
         preactivation = self.last_fc(h)
         mean = self.output_activation(preactivation)
         if self.std is None:
